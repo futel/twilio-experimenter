@@ -1,0 +1,10 @@
+version: "2"
+authtoken: 2NlXQVCWsz4FWGoYXOQQhpe6Fp2_4jCJRzMTcnP91pBY7rNUB
+log: ngrok.log
+tunnels:
+  webserver:
+    addr: 5000
+    proto: http
+  websocketserver:
+    addr: 6000
+    proto: http
