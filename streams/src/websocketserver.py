@@ -3,6 +3,7 @@
 import asyncio
 import base64
 import json
+import time
 import uuid
 import websockets
 
@@ -12,10 +13,13 @@ def log(msg):
     print(msg)
 
 def receive_media(message):
+    global stream_sid
     media = message["media"]
     chunk = base64.b64decode(media["payload"])
     # testing
-    with open("out", "ab") as f:
+    now = time.time()
+    filename = f"chunk{stream_sid}{now}"
+    with open(filename, "ab") as f:
         f.write(chunk)
 
 def payload_to_message(payload):
@@ -25,12 +29,16 @@ def payload_to_message(payload):
             "media": {"payload": payload}}
 
 def mark_message():
+    """Return a mark message which can be sent to the Twilio websocket."""
     global stream_sid
     return {"event": "mark",
             "streamSid": stream_sid,
             "mark": {"name": uuid.uuid4().hex}}
 
 async def handle(websocket):
+    """
+    Handle every message in websocket until we receive a stop message or barf.
+    """
     global stream_sid
     async for message in websocket:
         message = json.loads(message)

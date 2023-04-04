@@ -1,17 +1,25 @@
 # Server setup
 
 ## Set up virtualenv
+
 in src directory
 `virtualenv -p python3 env`
 `source env/bin/activate`
 `pip install -r requirements.txt`
-## Start server
+
+## Populate the environment with Google creds
+
+`export GOOGLE_APPLICATION_CREDENTIALS="./google_creds.json"`
+
+## Start servers
+
 in src directory
 `flask --app webserver run &`
 `python websocketserver.py &`
 `ngrok start --all --config ngrok.yml`
-note server url
-edit templates/streams for server url
+note websocketserver url
+edit templates/streams for websocketserver url
+visit webserver url once in browser and frob
 
 # Twilio setup
 
