@@ -10,66 +10,67 @@ import websockets
 import transcription
 import util
 
-stream_sid = None
+host = "localhost"
+port = 6000
 
-def receive_media(message):
-    global stream_sid
-    media = message["media"]
-    chunk = base64.b64decode(media["payload"])
-    # # testing
-    # now = time.time()
-    # filename = f"chunk{stream_sid}{now}"
-    # with open(filename, "ab") as f:
-    #     f.write(chunk)
+class Server:
 
-def payload_to_message(payload):
-    global stream_sid
-    return {"event": "media",
-            "streamSid": stream_sid,
-            "media": {"payload": payload}}
+    def __init__(self):
+        self.stream_sid = None
 
-def mark_message():
-    """Return a mark message which can be sent to the Twilio websocket."""
-    global stream_sid
-    return {"event": "mark",
-            "streamSid": stream_sid,
-            "mark": {"name": uuid.uuid4().hex}}
+    def receive_media(self, message):
+        media = message["media"]
+        chunk = base64.b64decode(media["payload"])
 
-async def handle(websocket):
-    """
-    Handle every message in websocket until we receive a stop message or barf.
-    """
-    global stream_sid
-    async for message in websocket:
-        message = json.loads(message)
-        if message["event"] == "connected":
-            util.log(f"Received event 'connected': {message}")
-        elif message["event"] == "start":
-            util.log(f"Received event 'start': {message}")
-            if stream_sid and stream_sid != message['streamSid']:
-                raise Exception("Unexpected new streamSid")
-            stream_sid = message['streamSid']
-        elif message["event"] == "media":
-            util.log("Received event 'media'")
-            # This assumes we get messages in order, we should instead
-            # verify the sequence numbers. message["sequenceNumber"]
-            receive_media(message)
-            # Send media back, for testing.
-            await websocket.send(
-                json.dumps(
-                    payload_to_message(message["media"]["payload"])))
-            # Send mark message, for testing. We should receive this back.
-            await websocket.send(json.dumps(mark_message()))
-        elif message["event"] == "stop":
-            util.log(f"Received event 'stop': {message}")
-            stream_sid = None
-            break
-        else:
-            util.log(f"Received unexpected event: {message}")
-    util.log("Connection closed")
+    # def payload_to_message(payload):
+    #     return {"event": "media",
+    #             "streamSid": self.stream_sid,
+    #             "media": {"payload": payload}}
+
+    def mark_message(self):
+        """Return a mark message which can be sent to the Twilio websocket."""
+        return {"event": "mark",
+                "streamSid": self.stream_sid,
+                "mark": {"name": uuid.uuid4().hex}}
+
+    async def handle(self, websocket):
+        """
+        Handle every message in websocket until we receive a stop message or barf.
+        """
+        async for message in websocket:
+            message = json.loads(message)
+            if message["event"] == "connected":
+                util.log(f"Received event 'connected': {message}")
+            elif message["event"] == "start":
+                util.log(f"Received event 'start': {message}")
+                if self.stream_sid and self.stream_sid != message['streamSid']:
+                    raise Exception("Unexpected new streamSid")
+                self.stream_sid = message['streamSid']
+            elif message["event"] == "media":
+                util.log("Received event 'media'")
+                # This assumes we get messages in order, we should instead
+                # verify the sequence numbers. message["sequenceNumber"]
+                self.receive_media(message)
+                # # Send media back, for testing.
+                # await websocket.send(
+                #     json.dumps(
+                #         payload_to_message(message["media"]["payload"])))
+                # Send mark message, for testing. We should receive this back.
+                await websocket.send(json.dumps(self.mark_message()))
+            elif message["event"] == "stop":
+                util.log(f"Received event 'stop': {message}")
+                self.stream_sid = None
+                break
+            else:
+                util.log(f"Received unexpected event: {message}")
+        util.log("Connection closed")
+
+    async def start(self):
+        async with websockets.serve(self.handle, host, port):
+            await asyncio.Future()  # run forever
 
 async def main():
-    async with websockets.serve(handle, "localhost", 6000):
-        await asyncio.Future()  # run forever
+    server = Server()
+    await server.start()
 
 asyncio.run(main())
