@@ -7,20 +7,20 @@ import time
 import uuid
 import websockets
 
-stream_sid = None
+import transcription
+import util
 
-def log(msg):
-    print(msg)
+stream_sid = None
 
 def receive_media(message):
     global stream_sid
     media = message["media"]
     chunk = base64.b64decode(media["payload"])
-    # testing
-    now = time.time()
-    filename = f"chunk{stream_sid}{now}"
-    with open(filename, "ab") as f:
-        f.write(chunk)
+    # # testing
+    # now = time.time()
+    # filename = f"chunk{stream_sid}{now}"
+    # with open(filename, "ab") as f:
+    #     f.write(chunk)
 
 def payload_to_message(payload):
     global stream_sid
@@ -43,14 +43,14 @@ async def handle(websocket):
     async for message in websocket:
         message = json.loads(message)
         if message["event"] == "connected":
-            log(f"Received event 'connected': {message}")
+            util.log(f"Received event 'connected': {message}")
         elif message["event"] == "start":
-            log(f"Received event 'start': {message}")
+            util.log(f"Received event 'start': {message}")
             if stream_sid and stream_sid != message['streamSid']:
                 raise Exception("Unexpected new streamSid")
             stream_sid = message['streamSid']
         elif message["event"] == "media":
-            log("Received event 'media'")
+            util.log("Received event 'media'")
             # This assumes we get messages in order, we should instead
             # verify the sequence numbers. message["sequenceNumber"]
             receive_media(message)
@@ -61,12 +61,12 @@ async def handle(websocket):
             # Send mark message, for testing. We should receive this back.
             await websocket.send(json.dumps(mark_message()))
         elif message["event"] == "stop":
-            log(f"Received event 'stop': {message}")
+            util.log(f"Received event 'stop': {message}")
             stream_sid = None
             break
         else:
-            log(f"Received unexpected event: {message}")
-    log("Connection closed")
+            util.log(f"Received unexpected event: {message}")
+    util.log("Connection closed")
 
 async def main():
     async with websockets.serve(handle, "localhost", 6000):
