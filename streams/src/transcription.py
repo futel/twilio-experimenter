@@ -1,10 +1,8 @@
-import base64
-import glob
-import queue
-import threading
-import time
+import asyncio
+from google.cloud import speech_v1
+from google.api_core.page_iterator_async import AsyncIterator
 
-from google.cloud import speech
+import util
 
 # alternatives {
 #   transcript: " Donald Duck"
@@ -29,56 +27,56 @@ from google.cloud import speech
 
 
 # XXX this gets creds from env?
-config = speech.RecognitionConfig(
-    encoding=speech.RecognitionConfig.AudioEncoding.MULAW,
+# XXX set for cheaper rate by letting google record
+# enable_automatic_punctuation=True
+# model latest_long phone_call
+# use_enhanced=True
+config = speech_v1.RecognitionConfig(
+    encoding=speech_v1.RecognitionConfig.AudioEncoding.MULAW,
     sample_rate_hertz=8000,
     language_code="en-US")
-streaming_config = speech.StreamingRecognitionConfig(
-    config=config, interim_results=True)
-
-def log(msg):
-    print(msg)
+streaming_config = speech_v1.StreamingRecognitionConfig(
+    config=config,
+    interim_results=True)       # XXX testing
 
 def on_transcription_response(response):
     if not response.results:
-        log("no results")
+        util.log("no results")
         return
     result = response.results[0]
     if not result.alternatives:
-        log("no alternatives")
+        util.log("no alternatives")
         return
-    transcription = result.alternatives[0].transcript
-    #log("Transcription: " + transcription)
-    log("Transcription: " + str(result))
+    # XXX do something here, this is a callback
+    util.log(result.alternatives[0].transcript)
 
 
 class SpeechClientBridge:
     """
     Class to process and emit transcription.
     Calls on_response with responses.
-    Call start() to begin. Call terminate() to end. Note that start()
-    does not return, we will need a thread.
+    Call start() to begin. Call terminate() to end.
     Call add_request() to add chunks.
     """
     def __init__(self, streaming_config, on_response):
         self._on_response = on_response
-        self._queue = queue.Queue()
+        self._queue = asyncio.Queue()
         self._ended = False
         self.streaming_config = streaming_config
+        self.client = speech_v1.SpeechAsyncClient()
 
-    def start(self):
+    async def start(self):
         """
         Set up generators to process requests and responses from
         the transcription service until we are terminated.
         """
-        client = speech.SpeechClient()
-        stream = self.generator()
-        requests = (
-            speech.StreamingRecognizeRequest(audio_content=content)
-            for content in stream)
-        responses = client.streaming_recognize(
-            self.streaming_config, requests)
-        self.process_responses_loop(responses)
+        print("xxx start")
+        responses = await self.client.streaming_recognize(requests=self.request_generator())
+        async for response in responses:
+            print("xxx response")
+            self._on_response(response)
+            if self._ended:
+                break
 
     def terminate(self):
         """Stop the request and response processing."""
@@ -88,60 +86,40 @@ class SpeechClientBridge:
         """Add a chunk of bytes, or None, to the processing queue."""
         if buffer is not None:
             buffer = bytes(buffer)
-        self._queue.put(buffer, block=False)
+        self._queue.put_nowait(buffer)
 
-    def process_responses_loop(self, responses):
-        """Process the responses generator until we are terminated."""
-        for response in responses:
-            self._on_response(response)
+    async def request_generator(self):
+        """
+        Yield streaming recognize requests. The first contains the config, the remainder contain
+        audio.
+        """
+        yield speech_v1.StreamingRecognizeRequest(streaming_config=self.streaming_config)
+        async for content in self.audio_generator():
+            yield speech_v1.StreamingRecognizeRequest(audio_content=content)
 
-            if self._ended:
-                break
-
-    def generator(self):
+    async def audio_generator(self):
         """
         Get and yield all the bytes in the queue until it contains a None.
         """
         while not self._ended:
-            # Use a blocking get() to ensure there's at least one chunk
+            # Await get() to ensure there's at least one chunk
             # of data, and stop iteration if the chunk is None,
-            # indicating the end of the audio stream.
-            chunk = self._queue.get()
+            # which was put in there to indicate the end of the audio stream.
+            # XXX will not notice _ended while waiting
+            chunk = await self._queue.get()
             if chunk is None:
                 return
             data = [chunk]
 
-            # Now consume whatever other data's still buffered.
+            # Consume all buffered data.
             while True:
                 try:
-                    chunk = self._queue.get(block=False)
+                    chunk = self._queue.get_nowait()
                     if chunk is None:
                         return
                     data.append(chunk)
-                except queue.Empty:
+                except asyncio.QueueEmpty:
                     break
 
             yield b"".join(data)
 
-if __name__ == "__main__":
-    # XXX testing
-    bridge = SpeechClientBridge(
-        streaming_config, on_transcription_response)
-    # Start the bridge in a thread, since the start method doesn't
-    # return until the bridge is terminated.
-    # XXX the websocketserver is async and we should be too
-    t = threading.Thread(target=bridge.start)
-    t.start()
-
-    for filename in sorted(glob.glob("test/chunks/*")):
-       with open(filename, "rb") as chunk:
-           chunk = chunk.read()
-           #chunk = base64.b64decode(chunk)
-           bridge.add_request(chunk)
-
-    # XXX instead, wait for bridge to be done or whatever
-    log("sleeping")
-    time.sleep(10)
-
-    bridge.add_request(None)
-    bridge.terminate()

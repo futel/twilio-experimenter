@@ -1,5 +1,4 @@
 Flask[async]==2.2.3
 #Flask-uWSGI-WebSocket==0.6.1 
 Websockets==10.4
-google-cloud-speech==2.0.1
-
+google-cloud-speech==2.19.0
