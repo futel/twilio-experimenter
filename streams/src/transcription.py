@@ -37,18 +37,7 @@ config = speech_v1.RecognitionConfig(
     language_code="en-US")
 streaming_config = speech_v1.StreamingRecognitionConfig(
     config=config,
-    interim_results=True)       # XXX testing
-
-def on_transcription_response(response):
-    if not response.results:
-        util.log("no results")
-        return
-    result = response.results[0]
-    if not result.alternatives:
-        util.log("no alternatives")
-        return
-    # XXX do something here, this is a callback
-    util.log(result.alternatives[0].transcript)
+    interim_results=True)
 
 
 class SpeechClientBridge:
@@ -58,23 +47,20 @@ class SpeechClientBridge:
     Call start() to begin. Call terminate() to end.
     Call add_request() to add chunks.
     """
-    def __init__(self, streaming_config, on_response):
-        self._on_response = on_response
+    def __init__(self, streaming_config, callback):
         self._queue = asyncio.Queue()
         self._ended = False
+        self._callback = callback
         self.streaming_config = streaming_config
         self.client = speech_v1.SpeechAsyncClient()
 
     async def start(self):
         """
-        Set up generators to process requests and responses from
-        the transcription service until we are terminated.
+        Process our requests and yield the responses until we are terminated.
         """
-        print("xxx start")
         responses = await self.client.streaming_recognize(requests=self.request_generator())
         async for response in responses:
-            print("xxx response")
-            self._on_response(response)
+            self.on_transcription_response(response)
             if self._ended:
                 break
 
@@ -123,3 +109,20 @@ class SpeechClientBridge:
 
             yield b"".join(data)
 
+    def on_transcription_response(self, response):
+        if not response.results:
+            util.log("no results")
+            return
+        try:
+            is_final = response.results[0].is_final
+        except AttributeError:
+            is_final = False
+        if not is_final:
+            util.log("not final")
+            return None
+        result = response.results[0]
+        if not result.alternatives:
+            util.log("no alternatives")
+            return
+        util.log("final")
+        self._callback(result.alternatives[0].transcript)
