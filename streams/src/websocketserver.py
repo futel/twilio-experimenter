@@ -15,23 +15,20 @@ port = 6000
 
 class Server:
 
-    def __init__(self, recv_media_callback, send_callback):
+    def __init__(self, recv_media_callback):
         self._stream_sid = None
         self._recv_media_callback = recv_media_callback
-        self._send_callback = send_callback
+        self._queue = asyncio.Queue()
+
+    def add_request(self, buffer):
+        """Add a chunk of bytes to the sending queue."""
+        buffer = bytes(buffer)
+        self._queue.put_nowait(buffer)
 
     async def _receive_media(self, message):
         media = message["media"]
         chunk = base64.b64decode(media["payload"])
         self._recv_media_callback(chunk)
-
-    # async def send_media(self, chunk):
-    #     payload = base64.encode(chunk)
-    #     await self._websocket.send(
-    #         json.dumps(
-    #             {"event": "media",
-    #              "streamSid": self._stream_sid,
-    #              "media": {"payload": payload}}))
 
     # def mark_message(self):
     #     """
@@ -72,8 +69,13 @@ class Server:
 
     async def producer_handler(self, websocket):
         while True:
-            message = await self._send_callback()
-            await websocket.send(message)
+            chunk = await self._queue.get()
+            payload = base64.encode(chunk)
+            await websocket.send(
+                json.dumps(
+                    {"event": "media",
+                     "streamSid": self._stream_sid,
+                     "media": {"payload": payload}}))
 
     async def handle(self, websocket):
         # XXX we will need to restart if connection was closed?

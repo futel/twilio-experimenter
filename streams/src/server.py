@@ -27,12 +27,8 @@ async def main():
         transcription.streaming_config, callback=speaker.add_request)
     transcriber_task = asyncio.create_task(transcriber.start())
 
-    def send_callback():
-        return asyncio.Future()
-
     websocket_server = websocketserver.Server(
-        recv_media_callback=transcriber.add_request,
-        send_callback=send_callback)
+        recv_media_callback=transcriber.add_request)
     websocketserver_task = asyncio.create_task(websocket_server.start())
 
     # We should gather these if we want to be able to shut down or cancel.
