@@ -63,11 +63,12 @@ class Server:
             elif message["event"] == "stop":
                 util.log(f"Received event 'stop': {message}")
                 self._stream_sid = None
-                # XXX Must stop server/protocol here, or it just lives on.
                 break
             elif message["event"] == "mark":
                 util.log(f"Received event 'mark': {message}")
         util.log("Connection closed")
+        # XXX Must stop server/protocol here, or it just lives on, and other
+        #     possible cleanup to prepare for restart.
 
     async def producer_handler(self, websocket):
         while True:
@@ -75,6 +76,7 @@ class Server:
             await websocket.send(message)
 
     async def handle(self, websocket):
+        # XXX we will need to restart if connection was closed?
         await asyncio.gather(
             self.consumer_handler(websocket),
             self.producer_handler(websocket))
