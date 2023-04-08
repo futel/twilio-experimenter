@@ -4,6 +4,7 @@ import asyncio
 import functools
 #import time
 
+import texttospeech
 import transcription
 import util
 import websocketserver
@@ -15,12 +16,15 @@ import websocketserver
 #     with open(filename, "ab") as f:
 #         f.write(chunk)
 
-def transcription_callback(response):
-    util.log(response)
+def speaker_callback(response):
+    util.log("speaker callback")
 
 async def main():
+
+    speaker = texttospeech.Client(speaker_callback)
+
     transcriber = transcription.SpeechClientBridge(
-        transcription.streaming_config, callback=transcription_callback)
+        transcription.streaming_config, callback=speaker.add_request)
     transcriber_task = asyncio.create_task(transcriber.start())
 
     def send_callback():

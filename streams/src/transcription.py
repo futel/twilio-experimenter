@@ -62,7 +62,7 @@ class SpeechClientBridge:
         """
         responses = await self.client.streaming_recognize(requests=self.request_generator())
         async for response in responses:
-            self.on_transcription_response(response)
+            await self.on_transcription_response(response)
             if self._ended:
                 break
 
@@ -111,7 +111,7 @@ class SpeechClientBridge:
 
             yield b"".join(data)
 
-    def on_transcription_response(self, response):
+    async def on_transcription_response(self, response):
         if not response.results:
             util.log("no results")
             return
@@ -127,4 +127,4 @@ class SpeechClientBridge:
             util.log("no alternatives")
             return
         util.log("final")
-        self._callback(result.alternatives[0].transcript)
+        await self._callback(result.alternatives[0].transcript)
