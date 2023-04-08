@@ -26,13 +26,15 @@ async def websocket_server_to_transcriber(websocket_server, transcriber):
 
 async def transcriber_to_speaker(transcriber, speaker):
     async for string in transcriber.receive_transcriptions():
-        await speaker.add_request(string)
+        speaker.add_request(string)
 
 async def main():
     websocket_server = websocketserver.Server()
     transcriber = transcription.SpeechClientBridge(
         transcription.streaming_config)
     speaker = texttospeech.Client(speaker_callback)
+
+    speaker_task = asyncio.create_task(speaker.start())
 
     transcriber_to_speaker_task = asyncio.create_task(
         transcriber_to_speaker(transcriber, speaker))
@@ -46,5 +48,6 @@ async def main():
     await websocket_server_task
     await websocket_server_to_transcriber_task
     await transcriber_to_speaker_task
+    await speaker_task
 
 asyncio.run(main())
