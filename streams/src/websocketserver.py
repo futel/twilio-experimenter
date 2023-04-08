@@ -20,7 +20,7 @@ class Server:
         self._recv_media_callback = recv_media_callback
         self._send_callback = send_callback
 
-    async def receive_media(self, message):
+    async def _receive_media(self, message):
         media = message["media"]
         chunk = base64.b64decode(media["payload"])
         self._recv_media_callback(chunk)
@@ -59,7 +59,7 @@ class Server:
                 #util.log("Received event 'media'")
                 # This assumes we get messages in order, we should instead
                 # verify the sequence numbers. message["sequenceNumber"]
-                await self.receive_media(message)
+                await self._receive_media(message)
             elif message["event"] == "stop":
                 util.log(f"Received event 'stop': {message}")
                 self._stream_sid = None
