@@ -129,7 +129,7 @@ class SpeechClientBridge:
         except AttributeError:
             is_final = False
         if not is_final:
-            util.log("not final")
+            #util.log("not final")
             return None
         result = response.results[0]
         if not result.alternatives:
