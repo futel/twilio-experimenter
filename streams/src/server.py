@@ -16,10 +16,6 @@ import websocketserver
 #     with open(filename, "ab") as f:
 #         f.write(chunk)
 
-def speaker_callback(response):
-    # XXX websocket_server.add_request
-    util.log("speaker callback")
-
 async def websocket_server_to_transcriber(websocket_server, transcriber):
     async for chunk in websocket_server.receive_media():
         transcriber.add_request(chunk)
@@ -28,12 +24,19 @@ async def transcriber_to_speaker(transcriber, speaker):
     async for string in transcriber.receive_transcriptions():
         speaker.add_request(string)
 
+async def speaker_to_websocket_server(speaker, websocket_server):
+    async for chunk in speaker.receive_media():
+        util.log("speaker receive media")
+        #websocket_server.add_request(chunk)
+
 async def main():
     websocket_server = websocketserver.Server()
     transcriber = transcription.SpeechClientBridge(
         transcription.streaming_config)
-    speaker = texttospeech.Client(speaker_callback)
+    speaker = texttospeech.Client()
 
+    speaker_to_websocket_server_task = asyncio.create_task(
+        speaker_to_websocket_server(speaker, websocket_server))
     speaker_task = asyncio.create_task(speaker.start())
 
     transcriber_to_speaker_task = asyncio.create_task(
@@ -49,5 +52,6 @@ async def main():
     await websocket_server_to_transcriber_task
     await transcriber_to_speaker_task
     await speaker_task
+    await speaker_to_websocket_server_task
 
 asyncio.run(main())

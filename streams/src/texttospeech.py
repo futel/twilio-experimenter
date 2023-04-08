@@ -11,14 +11,20 @@ class Client:
     Calls callback with responses.
     Call add_request() to add text.
     """
-    def __init__(self, callback):
+    def __init__(self):
         self._send_queue = asyncio.Queue()
+        self._recv_queue = asyncio.Queue()
         self._client = texttospeech_v1.TextToSpeechAsyncClient()
         self._voice = texttospeech_v1.VoiceSelectionParams()
         self._voice.language_code = "en-US"
         self._audio_config = texttospeech_v1.AudioConfig()
         self._audio_config.audio_encoding = "MULAW"
-        self._callback = callback
+
+    async def receive_media(self):
+        """Generator for received media chunks."""
+        # XXX need to stop when there won't be any more
+        while True:
+            yield await self._recv_queue.get()
 
     async def start(self):
         """
@@ -27,8 +33,7 @@ class Client:
         util.log("text to speech client starting")
         async for request in self.request_generator():
             response = await self._client.synthesize_speech(request=request)
-            #self._recv_queue.put_nowait(response.audio_content)
-            self._callback(response.audio_content)
+            self._recv_queue.put_nowait(response.audio_content)
 
     async def request_generator(self):
         while True:
@@ -43,4 +48,3 @@ class Client:
     def add_request(self, text):
         """Add text to the processing queue."""
         self._send_queue.put_nowait(text)
-
