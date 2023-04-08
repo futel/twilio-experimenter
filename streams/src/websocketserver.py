@@ -15,14 +15,15 @@ port = 6000
 
 class Server:
 
-    def __init__(self, media_callback):
+    def __init__(self, recv_media_callback, send_callback):
         self._stream_sid = None
-        self._media_callback = media_callback
+        self._recv_media_callback = recv_media_callback
+        self._send_callback = send_callback
 
     async def receive_media(self, message):
         media = message["media"]
         chunk = base64.b64decode(media["payload"])
-        self._media_callback(chunk)
+        self._recv_media_callback(chunk)
 
     # async def send_media(self, chunk):
     #     payload = base64.encode(chunk)
@@ -69,13 +70,14 @@ class Server:
                 self._stream_sid = None
                 # XXX Must stop server/protocol here, or it just lives on.
                 break
-            else:
-                pass
-                #util.log(f'Received unexpected event: {message["event"]}')
+            elif message["event"] == "mark":
+                util.log(f"Received event 'mark': {message}")
         util.log("Connection closed")
 
     async def producer_handler(self, websocket):
-        await asyncio.Future()  # run forever
+        while True:
+            message = await self._send_callback()
+            await websocket.send(message)
 
     async def handle(self, websocket):
         await asyncio.gather(
