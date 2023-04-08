@@ -17,7 +17,6 @@ class Server:
 
     def __init__(self, media_callback):
         self._stream_sid = None
-        self._websocket = None
         self._media_callback = media_callback
 
     async def receive_media(self, message):
@@ -41,19 +40,17 @@ class Server:
                 "streamSid": self._stream_sid,
                 "mark": {"name": uuid.uuid4().hex}}
 
-    async def handle(self, websocket):
+    async def consumer_handler(self, websocket):
         """
         Handle every message in websocket until we receive a stop
         message or barf.
         """
-        self._websocket = websocket
-        async for message in self._websocket:
+        async for message in websocket:
             message = json.loads(message)
             if message["event"] == "connected":
-                pass
-                #util.log(f"Received event 'connected': {message}")
+                util.log(f"Received event 'connected': {message}")
             elif message["event"] == "start":
-                #util.log(f"Received event 'start': {message}")
+                util.log(f"Received event 'start': {message}")
                 if self._stream_sid and self._stream_sid != message['streamSid']:
                     raise Exception("Unexpected new streamSid")
                 self._stream_sid = message['streamSid']
@@ -64,18 +61,27 @@ class Server:
                 await self.receive_media(message)
                 # Send mark message, for testing.
                 # We should receive this back.
-                await self._websocket.send(
-                    json.dumps(self.mark_message()))
+                # XXX use the producer handler
+                #await websocket.send(
+                #    json.dumps(self.mark_message()))
             elif message["event"] == "stop":
-                #util.log(f"Received event 'stop': {message}")
+                util.log(f"Received event 'stop': {message}")
                 self._stream_sid = None
+                # XXX Must stop server/protocol here, or it just lives on.
                 break
             else:
                 pass
                 #util.log(f'Received unexpected event: {message["event"]}')
         util.log("Connection closed")
 
+    async def producer_handler(self, websocket):
+        await asyncio.Future()  # run forever
+
+    async def handle(self, websocket):
+        await asyncio.gather(
+            self.consumer_handler(websocket),
+            self.producer_handler(websocket))
+
     async def start(self):
         async with websockets.serve(self.handle, host, port):
             await asyncio.Future()  # run forever
-
