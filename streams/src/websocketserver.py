@@ -16,6 +16,7 @@ port = 6000
 class Server:
 
     def __init__(self):
+        """Yields media chunks with recieve_media()."""
         self._stream_sid = None
         self._send_queue = asyncio.Queue()
         self._recv_queue = asyncio.Queue()
