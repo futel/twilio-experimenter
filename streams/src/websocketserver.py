@@ -33,13 +33,13 @@ class Server:
     #              "streamSid": self._stream_sid,
     #              "media": {"payload": payload}}))
 
-    def mark_message(self):
-        """
-        Return a mark message which can be sent to the Twilio websocket.
-        """
-        return {"event": "mark",
-                "streamSid": self._stream_sid,
-                "mark": {"name": uuid.uuid4().hex}}
+    # def mark_message(self):
+    #     """
+    #     Return a mark message which can be sent to the Twilio websocket.
+    #     """
+    #     return {"event": "mark",
+    #             "streamSid": self._stream_sid,
+    #             "mark": {"name": uuid.uuid4().hex}}
 
     async def consumer_handler(self, websocket):
         """
@@ -60,11 +60,6 @@ class Server:
                 # This assumes we get messages in order, we should instead
                 # verify the sequence numbers. message["sequenceNumber"]
                 await self.receive_media(message)
-                # Send mark message, for testing.
-                # We should receive this back.
-                # XXX use the producer handler
-                #await websocket.send(
-                #    json.dumps(self.mark_message()))
             elif message["event"] == "stop":
                 util.log(f"Received event 'stop': {message}")
                 self._stream_sid = None
