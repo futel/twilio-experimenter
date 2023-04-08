@@ -87,7 +87,8 @@ class SpeechClientBridge:
 
     async def audio_generator(self):
         """
-        Get and yield all the bytes in the queue until it contains a None.
+        Get concatenate, and yield all the bytes in the queue
+        until it is empty or contains a None.
         """
         while not self._ended:
             # Await get() to ensure there's at least one chunk
@@ -104,6 +105,7 @@ class SpeechClientBridge:
                 try:
                     chunk = self._queue.get_nowait()
                     if chunk is None:
+                        # XXX we throw away what we have?
                         return
                     data.append(chunk)
                 except asyncio.QueueEmpty:
