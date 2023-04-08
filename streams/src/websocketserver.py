@@ -15,20 +15,27 @@ port = 6000
 
 class Server:
 
-    def __init__(self, recv_media_callback):
+    def __init__(self):
         self._stream_sid = None
-        self._recv_media_callback = recv_media_callback
-        self._queue = asyncio.Queue()
+        self._send_queue = asyncio.Queue()
+        self._recv_queue = asyncio.Queue()
+
+    async def receive_media(self):
+        """Generator for received media chunks."""
+        # XXX need to stop when there won't be any more
+        while True:
+            yield await self._recv_queue.get()
 
     def add_request(self, buffer):
         """Add a chunk of bytes to the sending queue."""
         buffer = bytes(buffer)
-        self._queue.put_nowait(buffer)
+        self._send_queue.put_nowait(buffer)
 
-    async def _receive_media(self, message):
+    def _enqueue_media(self, message):
+        """Add a chunk of bytes to the receiving queue."""
         media = message["media"]
         chunk = base64.b64decode(media["payload"])
-        self._recv_media_callback(chunk)
+        self._recv_queue.put_nowait(chunk)
 
     # def mark_message(self):
     #     """
@@ -55,8 +62,9 @@ class Server:
             elif message["event"] == "media":
                 #util.log("Received event 'media'")
                 # This assumes we get messages in order, we should instead
-                # verify the sequence numbers. message["sequenceNumber"]
-                await self._receive_media(message)
+                # verify the sequence numbers? Or just skip?
+                # message["sequenceNumber"]
+                self._enqueue_media(message)
             elif message["event"] == "stop":
                 util.log(f"Received event 'stop': {message}")
                 self._stream_sid = None
@@ -69,7 +77,7 @@ class Server:
 
     async def producer_handler(self, websocket):
         while True:
-            chunk = await self._queue.get()
+            chunk = await self._send_queue.get()
             payload = base64.encode(chunk)
             await websocket.send(
                 json.dumps(
