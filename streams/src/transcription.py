@@ -45,7 +45,7 @@ streaming_config = speech_v1.StreamingRecognitionConfig(
 class SpeechClientBridge:
     """
     Class to process and emit transcription.
-    Calls on_response with responses.
+    Calls callback with responses.
     Call start() to begin. Call terminate() to end.
     Call add_request() to add chunks.
     """
