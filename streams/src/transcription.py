@@ -1,6 +1,5 @@
 import asyncio
 from google.cloud import speech_v1
-from google.api_core.page_iterator_async import AsyncIterator
 
 import util
 
@@ -28,9 +27,12 @@ import util
 
 # XXX this gets creds from env?
 # XXX set for cheaper rate by letting google record
+# adaptation?
+# speech_contexts?
 # enable_automatic_punctuation=True
 # model latest_long phone_call
 # use_enhanced=True
+# max_alternatives
 config = speech_v1.RecognitionConfig(
     encoding=speech_v1.RecognitionConfig.AudioEncoding.MULAW,
     sample_rate_hertz=8000,

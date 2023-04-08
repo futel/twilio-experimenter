@@ -15,7 +15,7 @@ in src directory
 
 in src directory
 `flask --app webserver run &`
-`python websocketserver.py &`
+`python server.py &`
 `ngrok start --all --config ngrok.yml`
 note websocketserver url
 edit templates/streams for websocketserver url
@@ -34,7 +34,7 @@ sip:test@experimenter-futel-stage.sip.twilio.com
 
 ## Call the SIP client using our server's TWIML
 
-SERVER_TWIML_URL: https://<server_url>/twiml
+SERVER_TWIML_URL: https: //<server_url>/twiml
 FROM_PSTN_NUMBER: <Twilio test PSTN number>
 TO_SIP_URL: sip:<extension>@<Twilio SIP domain>
 
