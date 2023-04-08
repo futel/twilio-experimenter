@@ -79,7 +79,8 @@ class Server:
     async def producer_handler(self, websocket):
         while True:
             chunk = await self._send_queue.get()
-            payload = base64.encode(chunk)
+            payload = base64.b64encode(chunk).decode()
+            util.log("sending")
             await websocket.send(
                 json.dumps(
                     {"event": "media",
