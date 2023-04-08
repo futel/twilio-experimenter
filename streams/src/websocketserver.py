@@ -93,5 +93,6 @@ class Server:
             self.producer_handler(websocket))
 
     async def start(self):
+        util.log("websocket server starting")
         async with websockets.serve(self.handle, host, port):
             await asyncio.Future()  # run forever

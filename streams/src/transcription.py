@@ -60,6 +60,7 @@ class SpeechClientBridge:
         """
         Process our requests and yield the responses until we are terminated.
         """
+        util.log("transcription client starting")
         responses = await self.client.streaming_recognize(requests=self.request_generator())
         async for response in responses:
             await self.on_transcription_response(response)
