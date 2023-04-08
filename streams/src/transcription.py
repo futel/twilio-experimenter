@@ -45,14 +45,14 @@ streaming_config = speech_v1.StreamingRecognitionConfig(
 class SpeechClientBridge:
     """
     Class to process and emit transcription.
-    Calls callback with responses.
+    Yields result strings with recieve_transcriptions().
     Call start() to begin. Call terminate() to end.
     Call add_request() to add chunks.
     """
-    def __init__(self, streaming_config, callback):
-        self._queue = asyncio.Queue()
+    def __init__(self, streaming_config):
+        self._send_queue = asyncio.Queue()
+        self._recv_queue = asyncio.Queue()
         self._ended = False
-        self._callback = callback
         self.streaming_config = streaming_config
         self.client = speech_v1.SpeechAsyncClient()
 
@@ -70,11 +70,17 @@ class SpeechClientBridge:
         """Stop the request and response processing."""
         self._ended = True
 
+    async def receive_transcriptions(self):
+        """Generator for received transcription strings."""
+        # XXX need to stop when there won't be any more
+        while True:
+            yield await self._recv_queue.get()
+
     def add_request(self, buffer):
         """Add a chunk of bytes, or None, to the processing queue."""
         if buffer is not None:
             buffer = bytes(buffer)
-        self._queue.put_nowait(buffer)
+        self._send_queue.put_nowait(buffer)
 
     async def request_generator(self):
         """
@@ -95,7 +101,7 @@ class SpeechClientBridge:
             # of data, and stop iteration if the chunk is None,
             # which was put in there to indicate the end of the audio stream.
             # XXX will not notice _ended while waiting
-            chunk = await self._queue.get()
+            chunk = await self._send_queue.get()
             if chunk is None:
                 return
             data = [chunk]
@@ -103,7 +109,7 @@ class SpeechClientBridge:
             # Consume all buffered data.
             while True:
                 try:
-                    chunk = self._queue.get_nowait()
+                    chunk = self._send_queue.get_nowait()
                     if chunk is None:
                         # XXX we throw away what we have?
                         return
@@ -128,5 +134,6 @@ class SpeechClientBridge:
         if not result.alternatives:
             util.log("no alternatives")
             return
+        transcript = result.alternatives[0].transcript
         util.log("final")
-        await self._callback(result.alternatives[0].transcript)
+        self._recv_queue.put_nowait(transcript)
