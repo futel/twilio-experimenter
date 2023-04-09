@@ -9,7 +9,7 @@ voice = texttospeech_v1.VoiceSelectionParams()
 voice.language_code = "en-US"
 audio_config = texttospeech_v1.AudioConfig()
 audio_config.audio_encoding = "MULAW"
-# sample_rate_hertz
+audio_config.sample_rate_hertz = 8000
 
 class Client:
     """
@@ -45,6 +45,7 @@ class Client:
     async def request_generator(self):
         while True:
             text = await self._send_queue.get()
+            util.log(f"texttospeech request: {text}")
             input_ = texttospeech_v1.SynthesisInput()
             input_.text = text
             yield texttospeech_v1.SynthesizeSpeechRequest(
