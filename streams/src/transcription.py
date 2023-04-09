@@ -49,11 +49,10 @@ class SpeechClientBridge:
     Call start() to begin. Call terminate() to end.
     Call add_request() to add chunks.
     """
-    def __init__(self, streaming_config):
+    def __init__(self):
         self._send_queue = asyncio.Queue()
         self._recv_queue = asyncio.Queue()
         self._ended = False
-        self.streaming_config = streaming_config
         self.client = speech_v1.SpeechAsyncClient()
 
     async def start(self):
@@ -88,7 +87,7 @@ class SpeechClientBridge:
         Yield streaming recognize requests. The first contains the config, the remainder contain
         audio.
         """
-        yield speech_v1.StreamingRecognizeRequest(streaming_config=self.streaming_config)
+        yield speech_v1.StreamingRecognizeRequest(streaming_config=streaming_config)
         async for content in self.audio_generator():
             yield speech_v1.StreamingRecognizeRequest(audio_content=content)
 
