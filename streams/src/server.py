@@ -16,34 +16,24 @@ import websocketserver
 #     with open(filename, "ab") as f:
 #         f.write(chunk)
 
-async def websocket_to_transcriber(websocket_server, transcriber):
-    async for chunk in websocket_server.receive_response():
-        transcriber.add_request(chunk)
-
-async def transcriber_to_speaker(transcriber, speaker):
-    async for string in transcriber.receive_response():
-        speaker.add_request(string)
-
-async def speaker_to_websocket(speaker, websocket):
-    async for chunk in speaker.receive_response():
-        websocket.add_request(chunk)
+def pipeline_tasks(producer, consumer):
+    """Return tasks to start producer and send producer messages to consumer."""
+    async def step_generator():
+        """ Async generator to receive from producer and send to consumer."""
+        async for item in producer.receive_response():
+            consumer.add_request(item)
+    start_task = asyncio.create_task(producer.start())
+    step_task = asyncio.create_task(step_generator())
+    return (start_task, step_task)
 
 async def main():
     speaker = texttospeech.Client()
     transcriber = transcription.SpeechClientBridge()
     websocket = websocketserver.Server()
 
-    speaker_to_websocket_task = asyncio.create_task(
-        speaker_to_websocket(speaker, websocket))
-    speaker_task = asyncio.create_task(speaker.start())
-
-    transcriber_to_speaker_task = asyncio.create_task(
-        transcriber_to_speaker(transcriber, speaker))
-    transcriber_task = asyncio.create_task(transcriber.start())
-
-    websocket_to_transcriber_task = asyncio.create_task(
-        websocket_to_transcriber(websocket, transcriber))
-    websocket_task = asyncio.create_task(websocket.start())
+    (speaker_to_websocket_task, speaker_task) = pipeline_tasks(speaker, websocket)
+    (transcriber_to_speaker_task, transcriber_task) = pipeline_tasks(transcriber, speaker)
+    (websocket_to_transcriber_task, websocket_task) = pipeline_tasks(websocket, transcriber)
 
     # We should gather these if we want to be able to shut down or cancel.
     await websocket_task
