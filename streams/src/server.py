@@ -38,6 +38,7 @@ async def main():
     # We should gather these if we want to be able to shut down or cancel.
     await websocket_task
     await websocket_to_transcriber_task
+    await transcriber_task
     await transcriber_to_speaker_task
     await speaker_task
     await speaker_to_websocket_task
