@@ -2,7 +2,7 @@
 
 import asyncio
 import functools
-#import time
+import time
 
 import texttospeech
 import transcription
@@ -12,7 +12,7 @@ import websocketserver
 # def save_chunk(chunk):
 #     # testing
 #     now = time.time()
-#     filename = f"chunk{stream_sid}{now}"
+#     filename = f"chunk{now}"
 #     with open(filename, "ab") as f:
 #         f.write(chunk)
 
@@ -27,7 +27,7 @@ async def transcriber_to_speaker(transcriber, speaker):
 async def speaker_to_websocket_server(speaker, websocket_server):
     async for chunk in speaker.receive_media():
         util.log("speaker receive media")
-        #websocket_server.add_request(chunk)
+        websocket_server.add_request(chunk)
 
 async def main():
     websocket_server = websocketserver.Server()

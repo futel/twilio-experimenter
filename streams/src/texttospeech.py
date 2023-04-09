@@ -19,6 +19,7 @@ class Client:
         self._voice.language_code = "en-US"
         self._audio_config = texttospeech_v1.AudioConfig()
         self._audio_config.audio_encoding = "MULAW"
+        # sample_rate_hertz
 
     async def receive_media(self):
         """Generator for received media chunks."""
@@ -28,12 +29,13 @@ class Client:
 
     async def start(self):
         """
-        Process our requests and enqueue responses.
+        Process our requests and enqueue chunk response.
         """
         util.log("text to speech client starting")
         async for request in self.request_generator():
             response = await self._client.synthesize_speech(request=request)
-            self._recv_queue.put_nowait(response.audio_content)
+            chunk = util.wav_to_chunk(response.audio_content)
+            self._recv_queue.put_nowait(chunk)
 
     async def request_generator(self):
         while True:
