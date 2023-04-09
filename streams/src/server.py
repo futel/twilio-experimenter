@@ -4,7 +4,7 @@ import asyncio
 import functools
 import time
 
-import texttospeech
+import speech
 import transcription
 import util
 import websocketserver
@@ -27,7 +27,7 @@ def pipeline_tasks(producer, consumer):
     return (start_task, step_task)
 
 async def main():
-    speaker = texttospeech.Client()
+    speaker = speech.Client()
     transcriber = transcription.SpeechClientBridge()
     websocket = websocketserver.Server()
 

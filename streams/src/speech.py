@@ -45,7 +45,7 @@ class Client:
     async def request_generator(self):
         while True:
             text = await self._send_queue.get()
-            util.log(f"texttospeech request: {text}")
+            util.log(f"speech request: {text}")
             input_ = texttospeech_v1.SynthesisInput()
             input_.text = text
             yield texttospeech_v1.SynthesizeSpeechRequest(
