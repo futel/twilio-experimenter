@@ -46,24 +46,24 @@ class SpeechClientBridge:
     """
     Class to process and emit transcription.
     Yields result strings with recieve_transcriptions().
-    Call start() to begin. Call terminate() to end.
+    Call start() to begin. Call end() to end.
     Call add_request() to add chunks.
     """
     def __init__(self):
         self._send_queue = asyncio.Queue()
         self._recv_queue = asyncio.Queue()
-        self._ended = False
-        self.client = speech_v1.SpeechAsyncClient()
+        self.client = None
 
     async def start(self):
         """
         Process our requests and yield the responses until we are terminated.
         """
         util.log("transcription client starting")
+        self.client = speech_v1.SpeechAsyncClient()
         responses = await self.client.streaming_recognize(requests=self.request_generator())
         async for response in responses:
             await self.on_transcription_response(response)
-            if self._ended:
+            if self.client is None:
                 break
 
     async def receive_response(self):
@@ -78,9 +78,9 @@ class SpeechClientBridge:
             buffer = bytes(buffer)
         self._send_queue.put_nowait(buffer)
 
-    def terminate(self):
+    def end(self):
         """Stop the request and response processing."""
-        self._ended = True
+        self.client = None
 
     async def request_generator(self):
         """
@@ -96,11 +96,11 @@ class SpeechClientBridge:
         Get concatenate, and yield all the bytes in the queue
         until it is empty or contains a None.
         """
-        while not self._ended:
+        while self.client is not None:
             # Await get() to ensure there's at least one chunk
             # of data, and stop iteration if the chunk is None,
             # which was put in there to indicate the end of the audio stream.
-            # XXX will not notice _ended while waiting
+            # XXX will not notice self.client while waiting
             chunk = await self._send_queue.get()
             if chunk is None:
                 return
@@ -122,7 +122,8 @@ class SpeechClientBridge:
     async def on_transcription_response(self, response):
         #util.log("response")
         if not response.results:
-            util.log("no results")
+            #util.log("no results")
+            # XXX do we we need to restart the client?
             return
         try:
             is_final = response.results[0].is_final
