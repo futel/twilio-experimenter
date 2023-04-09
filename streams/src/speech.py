@@ -27,6 +27,15 @@ class Client:
         Process our requests and enqueue chunk response.
         """
         util.log("text to speech client starting")
+        self.response_task = asyncio.create_task(self.response_iter())
+
+    def stop(self):
+        """Stop sending requests to the client."""
+        # We should clear the queue also.
+        self.response_task.cancel()
+        util.log("text to speech client stopped")
+
+    async def response_iter(self):
         async for request in self.request_generator():
             response = await self._client.synthesize_speech(request=request)
             chunk = util.wav_to_chunk(response.audio_content)
@@ -34,7 +43,6 @@ class Client:
 
     async def receive_response(self):
         """Generator for received media chunks."""
-        # XXX need to stop when there won't be any more
         while True:
             yield await self._recv_queue.get()
 
@@ -46,9 +54,12 @@ class Client:
         while True:
             text = await self._send_queue.get()
             util.log(f"speech request: {text}")
-            input_ = texttospeech_v1.SynthesisInput()
-            input_.text = text
-            yield texttospeech_v1.SynthesizeSpeechRequest(
-                input=input_,
-                voice=voice,
-                audio_config=audio_config)
+            yield self.text_to_request(text)
+
+    def text_to_request(self, text):
+        input_ = texttospeech_v1.SynthesisInput()
+        input_.text = text
+        return texttospeech_v1.SynthesizeSpeechRequest(
+            input=input_,
+            voice=voice,
+            audio_config=audio_config)
