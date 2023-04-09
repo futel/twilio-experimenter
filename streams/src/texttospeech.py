@@ -21,12 +21,6 @@ class Client:
         self._audio_config.audio_encoding = "MULAW"
         # sample_rate_hertz
 
-    async def receive_media(self):
-        """Generator for received media chunks."""
-        # XXX need to stop when there won't be any more
-        while True:
-            yield await self._recv_queue.get()
-
     async def start(self):
         """
         Process our requests and enqueue chunk response.
@@ -37,6 +31,16 @@ class Client:
             chunk = util.wav_to_chunk(response.audio_content)
             self._recv_queue.put_nowait(chunk)
 
+    async def receive_response(self):
+        """Generator for received media chunks."""
+        # XXX need to stop when there won't be any more
+        while True:
+            yield await self._recv_queue.get()
+
+    def add_request(self, text):
+        """Add text to the processing queue."""
+        self._send_queue.put_nowait(text)
+
     async def request_generator(self):
         while True:
             text = await self._send_queue.get()
@@ -46,7 +50,3 @@ class Client:
                 input=input_,
                 voice=self._voice,
                 audio_config=self._audio_config)
-
-    def add_request(self, text):
-        """Add text to the processing queue."""
-        self._send_queue.put_nowait(text)

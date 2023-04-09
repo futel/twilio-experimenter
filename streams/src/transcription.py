@@ -67,11 +67,7 @@ class SpeechClientBridge:
             if self._ended:
                 break
 
-    def terminate(self):
-        """Stop the request and response processing."""
-        self._ended = True
-
-    async def receive_transcriptions(self):
+    async def receive_response(self):
         """Generator for received transcription strings."""
         # XXX need to stop when there won't be any more
         while True:
@@ -82,6 +78,10 @@ class SpeechClientBridge:
         if buffer is not None:
             buffer = bytes(buffer)
         self._send_queue.put_nowait(buffer)
+
+    def terminate(self):
+        """Stop the request and response processing."""
+        self._ended = True
 
     async def request_generator(self):
         """

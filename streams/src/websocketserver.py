@@ -21,7 +21,12 @@ class Server:
         self._send_queue = asyncio.Queue()
         self._recv_queue = asyncio.Queue()
 
-    async def receive_media(self):
+    async def start(self):
+        util.log("websocket server starting")
+        async with websockets.serve(self.handle, host, port):
+            await asyncio.Future()  # run forever
+
+    async def receive_response(self):
         """Generator for received media chunks."""
         # XXX need to stop when there won't be any more
         while True:
@@ -92,8 +97,3 @@ class Server:
         await asyncio.gather(
             self.consumer_handler(websocket),
             self.producer_handler(websocket))
-
-    async def start(self):
-        util.log("websocket server starting")
-        async with websockets.serve(self.handle, host, port):
-            await asyncio.Future()  # run forever
