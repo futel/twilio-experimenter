@@ -5,6 +5,12 @@ import util
 
 # XXX this gets creds from env?
 
+voice = texttospeech_v1.VoiceSelectionParams()
+voice.language_code = "en-US"
+audio_config = texttospeech_v1.AudioConfig()
+audio_config.audio_encoding = "MULAW"
+# sample_rate_hertz
+
 class Client:
     """
     Class to process and emit speech.
@@ -15,11 +21,6 @@ class Client:
         self._send_queue = asyncio.Queue()
         self._recv_queue = asyncio.Queue()
         self._client = texttospeech_v1.TextToSpeechAsyncClient()
-        self._voice = texttospeech_v1.VoiceSelectionParams()
-        self._voice.language_code = "en-US"
-        self._audio_config = texttospeech_v1.AudioConfig()
-        self._audio_config.audio_encoding = "MULAW"
-        # sample_rate_hertz
 
     async def start(self):
         """
@@ -48,5 +49,5 @@ class Client:
             input_.text = text
             yield texttospeech_v1.SynthesizeSpeechRequest(
                 input=input_,
-                voice=self._voice,
-                audio_config=self._audio_config)
+                voice=voice,
+                audio_config=audio_config)
