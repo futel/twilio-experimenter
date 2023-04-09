@@ -120,6 +120,7 @@ class SpeechClientBridge:
             yield b"".join(data)
 
     async def on_transcription_response(self, response):
+        #util.log("response")
         if not response.results:
             util.log("no results")
             return
