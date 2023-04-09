@@ -46,20 +46,26 @@ class SpeechClientBridge:
     """
     Class to process and emit transcription.
     Yields result strings with recieve_transcriptions().
-    Call start() to begin. Call end() to end.
+    Call start() to begin. Call stop() to stop.
     Call add_request() to add chunks.
     """
     def __init__(self):
         self._send_queue = asyncio.Queue()
         self._recv_queue = asyncio.Queue()
         self.client = None
+        self.response_task = None
 
     async def start(self):
         """
-        Process our requests and yield the responses until we are terminated.
+        Process our requests and yield the responses until we are stopped.
         """
         util.log("transcription client starting")
         self.client = speech_v1.SpeechAsyncClient()
+        self.response_task = asyncio.create_task(self.response_iter())
+        #await self.response_task
+
+    async def response_iter(self):
+        """ Call on_transcription_response for each response from our client."""
         responses = await self.client.streaming_recognize(requests=self.request_generator())
         async for response in responses:
             await self.on_transcription_response(response)
@@ -78,9 +84,11 @@ class SpeechClientBridge:
             buffer = bytes(buffer)
         self._send_queue.put_nowait(buffer)
 
-    def end(self):
-        """Stop the request and response processing."""
+    def stop(self):
+        """Stop sending requests to the client."""
+        self.response_task.cancel()
         self.client = None
+        util.log("transcription client stopped")
 
     async def request_generator(self):
         """
@@ -122,8 +130,10 @@ class SpeechClientBridge:
     async def on_transcription_response(self, response):
         #util.log("response")
         if not response.results:
-            #util.log("no results")
-            # XXX do we we need to restart the client?
+            # We get this when the transcriber times out. Is that the
+            # only time we get it?
+            self.stop()
+            await self.start()
             return
         try:
             is_final = response.results[0].is_final
