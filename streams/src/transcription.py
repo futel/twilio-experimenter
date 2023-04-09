@@ -62,7 +62,13 @@ class SpeechClientBridge:
         util.log("transcription client starting")
         self.client = speech_v1.SpeechAsyncClient()
         self.response_task = asyncio.create_task(self.response_iter())
-        #await self.response_task
+
+    def stop(self):
+        """Stop sending requests to the client."""
+        # We should clear the queue also.
+        self.response_task.cancel()
+        self.client = None
+        util.log("transcription client stopped")
 
     async def response_iter(self):
         """ Call on_transcription_response for each response from our client."""
@@ -83,12 +89,6 @@ class SpeechClientBridge:
         if buffer is not None:
             buffer = bytes(buffer)
         self._send_queue.put_nowait(buffer)
-
-    def stop(self):
-        """Stop sending requests to the client."""
-        self.response_task.cancel()
-        self.client = None
-        util.log("transcription client stopped")
 
     async def request_generator(self):
         """
