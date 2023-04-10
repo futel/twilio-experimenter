@@ -80,7 +80,6 @@ class SpeechClientBridge:
 
     async def receive_response(self):
         """Generator for received transcription strings."""
-        # XXX need to stop when there won't be any more
         while True:
             yield await self._recv_queue.get()
 
@@ -97,6 +96,7 @@ class SpeechClientBridge:
         """
         yield speech_v1.StreamingRecognizeRequest(streaming_config=streaming_config)
         async for content in self.audio_generator():
+            util.log("transcription request")
             yield speech_v1.StreamingRecognizeRequest(audio_content=content)
 
     async def audio_generator(self):
